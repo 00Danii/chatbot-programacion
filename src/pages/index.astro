@@ -2,15 +2,471 @@
 
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Astro — Chat Terminal</title>
+    <style>
+      :root {
+        --bg: #000;
+        --neon-green: #39ff14;
+        --neon-pink: #ff2d95;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: var(--bg);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+          "Ubuntu Mono", monospace;
+        color: var(--neon-green);
+      }
+      .wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      .terminal {
+        width: min(980px, 94%);
+        background: linear-gradient(
+          180deg,
+          rgba(10, 10, 10, 0.94),
+          rgba(0, 0, 0, 0.94)
+        );
+        border-radius: 10px;
+        box-shadow: 0 0 60px rgba(57, 255, 20, 0.04);
+        border: 1px solid rgba(57, 255, 20, 0.06);
+        overflow: hidden;
+      }
+      .term-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 45, 149, 0.04),
+          rgba(57, 255, 20, 0.03)
+        );
+        border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      }
+      .dots {
+        display: flex;
+        gap: 8px;
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+      .dot.green {
+        background: var(--neon-green);
+        box-shadow: 0 0 12px var(--neon-green);
+      }
+      .dot.pink {
+        background: var(--neon-pink);
+        box-shadow: 0 0 12px var(--neon-pink);
+      }
+      .title {
+        flex: 1;
+        color: var(--neon-pink);
+        font-weight: 700;
+      }
+      .kbd {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--neon-pink);
+        font-weight: 600;
+      }
+      .term-body {
+        display: flex;
+        gap: 20px;
+        padding: 18px;
+      }
+      .screen {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 6px;
+        padding: 12px;
+        min-height: 420px;
+        border: 1px solid rgba(57, 255, 20, 0.04);
+        display: flex;
+        flex-direction: column;
+      }
+      .meta {
+        width: 300px;
+        padding: 12px;
+        border-left: 1px dashed rgba(255, 255, 255, 0.02);
+        color: rgba(255, 255, 255, 0.6);
+      }
+      .messages {
+        flex: 1;
+        overflow: auto;
+        padding: 6px 8px;
+      }
+      /* Markdown styling */
+      .screen .messages pre {
+        background: rgba(0, 0, 0, 0.75);
+        border: 1px solid rgba(255, 45, 149, 0.06);
+        padding: 12px;
+        border-radius: 6px;
+        color: #fff;
+        font-family: ui-monospace, "Roboto Mono", "Courier New", monospace;
+        font-size: 13px;
+        overflow: auto;
+        margin: 8px 0;
+      }
+      .screen .messages code {
+        background: rgba(221, 33, 127, 0.04);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--neon-pink);
+        font-family: ui-monospace, "Roboto Mono", monospace;
+      }
+      .screen .messages a {
+        color: var(--neon-pink);
+        text-decoration: underline;
+      }
+      .msg {
+        margin: 8px 0;
+        white-space: pre-wrap;
+        font-size: 14px;
+        line-height: 1.45;
+        /* aseguramos que no haya color por defecto aquí */
+        color: inherit;
+      }
+      /* color explícito con mayor especificidad para evitar herencias.
+         Aplicamos también a todos los descendientes para cubrir <p>, <pre>, <code>, etc. */
+      .screen .messages .msg.user,
+      .screen .messages .msg.user * {
+        color: var(--neon-green) !important;
+      }
+      .screen .messages .msg.user {
+        text-align: right;
+        text-shadow: 0 0 6px rgba(57, 255, 20, 0.25);
+      }
+
+      .screen .messages .msg.assistant,
+      .screen .messages .msg.assistant *,
+      .screen .messages [data-role="assistant"],
+      .screen .messages [data-role="assistant"] * {
+        color: var(--neon-pink) !important;
+      }
+      .screen .messages .msg.assistant {
+        text-align: left;
+        text-shadow: 0 0 10px rgba(255, 45, 149, 0.22);
+        filter: drop-shadow(0 0 6px rgba(255, 45, 149, 0.12));
+      }
+
+      /* Asegurar bloques de código dentro de mensajes del asistente mantengan legibilidad */
+      .screen .messages .msg.assistant pre,
+      .screen .messages .msg.assistant code {
+        color: var(--neon-pink) !important;
+      }
+      .input-row {
+        display: flex;
+        gap: 8px;
+        padding-top: 10px;
+      }
+      textarea.input {
+        flex: 1;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        color: var(--neon-green);
+        padding: 10px;
+        border-radius: 6px;
+        resize: vertical;
+        min-height: 44px;
+      }
+      button.send {
+        background: var(--neon-pink);
+        border: none;
+        color: #000;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button.send[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .meta .label {
+        color: var(--neon-pink);
+        font-weight: 700;
+        margin-top: 8px;
+      }
+      .footer {
+        padding: 10px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.02);
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      @media (max-width: 800px) {
+        .term-body {
+          flex-direction: column;
+        }
+        .meta {
+          width: 100%;
+          border-left: none;
+          border-top: 1px dashed rgba(255, 255, 255, 0.02);
+          padding-top: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="terminal" role="application" aria-label="Chat terminal">
+        <div class="term-header">
+          <div class="dots">
+            <div class="dot green" aria-hidden></div><div
+              class="dot pink"
+              aria-hidden
+            >
+            </div><div class="dot green" style="opacity:0.6" aria-hidden></div>
+          </div>
+          <div class="title">Astro Chat-Terminal</div>
+          <div class="kbd">client ↔ server</div>
+        </div>
+
+        <div class="term-body">
+          <div class="screen">
+            <div class="messages" id="messages" aria-live="polite"></div>
+
+            <div class="input-row">
+              <textarea
+                id="input"
+                class="input"
+                placeholder="Escribe tu mensaje y presiona Enviar..."
+              ></textarea>
+              <button id="sendBtn" class="send">Enviar</button>
+            </div>
+          </div>
+
+          <aside class="meta">
+            <div class="label">Modelo</div>
+            <div
+              style="color:var(--neon-green);font-weight:600;margin-bottom:8px"
+            >
+              Qwen/Qwen3-Coder-30B-A3B-Instruct:nebius
+            </div>
+            <div class="label">Estado</div>
+            <div
+              id="status"
+              style="color:var(--neon-green);font-weight:600;margin-top:6px"
+            >
+              Listo
+            </div>
+          </aside>
+        </div>
+
+        <div class="footer">Hecho con ❤️ por Danii.</div>
+      </div>
+
+      <script>
+        // Chat client: mantiene mensajes localmente y los envía a /api/query
+        const messagesEl = /** @type {HTMLDivElement|null} */ (
+          document.getElementById("messages")
+        );
+        const inputEl = /** @type {HTMLTextAreaElement|null} */ (
+          document.getElementById("input")
+        );
+        const sendBtn = /** @type {HTMLButtonElement|null} */ (
+          document.getElementById("sendBtn")
+        );
+        const statusEl = /** @type {HTMLDivElement|null} */ (
+          document.getElementById("status")
+        );
+
+        let chat = [{ role: "user", content: "" }];
+
+        function render() {
+          if (!messagesEl) return;
+          console.log(
+            "render roles:",
+            chat.map((c) => c.role)
+          );
+          messagesEl.innerHTML = "";
+          chat.forEach((m) => {
+            const div = document.createElement("div");
+            // aplicar ambas: clase y atributo para depuración/selección
+            div.className = "msg " + (m.role === "user" ? "user" : "assistant");
+            div.setAttribute(
+              "data-role",
+              m.role === "user" ? "user" : "assistant"
+            );
+            div.innerHTML = renderMarkdown(m.content ?? "");
+            messagesEl.appendChild(div);
+          });
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        async function sendMessage(content: string) {
+          // push user message
+          chat.push({ role: "user", content });
+          render();
+
+          // disable input
+          if (sendBtn instanceof HTMLButtonElement) sendBtn.disabled = true;
+          if (inputEl instanceof HTMLTextAreaElement) inputEl.disabled = true;
+          if (statusEl) statusEl.textContent = "Enviando...";
+
+          try {
+            // Send only the single new message (no array), per API expectation
+            const systemPrompt = {
+              role: "system",
+              content:
+                "Eres un asistente de programación experto. Respondes de forma concisa y clara. Proporcionas ejemplos de código cuando es relevante. Usa bloques de código para formatear fragmentos de código. Si no sabes la respuesta, di que no lo sabes.",
+            };
+            const payload = {
+              messages: [systemPrompt, { role: "user", content }],
+              model: "Qwen/Qwen3-Coder-30B-A3B-Instruct:nebius",
+            };
+            // Enviar al endpoint local que añade la cabecera Authorization segura en el servidor
+            const res = await fetch("/api/query", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+
+            // extraer texto de respuesta en formatos comunes
+            let reply = null;
+            try {
+              if (json?.choices && json.choices[0]) {
+                const ch = json.choices[0];
+                if (
+                  ch.message &&
+                  (typeof ch.message === "string" || Array.isArray(ch.message))
+                ) {
+                  reply =
+                    typeof ch.message === "string"
+                      ? ch.message
+                      : JSON.stringify(ch.message);
+                } else if (ch.message?.content) {
+                  // content puede ser string o array
+                  if (typeof ch.message.content === "string")
+                    reply = ch.message.content;
+                  else
+                    reply = Array.isArray(ch.message.content)
+                      ? ch.message.content.join("")
+                      : JSON.stringify(ch.message.content);
+                } else if (ch.text) {
+                  reply = ch.text;
+                }
+              }
+
+              if (!reply && typeof json.generated_text === "string")
+                reply = json.generated_text;
+              if (!reply && json?.output && Array.isArray(json.output))
+                reply = JSON.stringify(json.output);
+              if (!reply) reply = JSON.stringify(json, null, 2);
+            } catch (e) {
+              reply = JSON.stringify(json, null, 2);
+            }
+
+            chat.push({ role: "assistant", content: reply });
+            render();
+            if (statusEl) statusEl.textContent = "OK";
+          } catch (rawErr) {
+            const e =
+              rawErr instanceof Error ? rawErr : new Error(String(rawErr));
+            chat.push({
+              role: "assistant",
+              content: "Error: " + (e.message || String(e)),
+            });
+            render();
+            if (statusEl) statusEl.textContent = "Error";
+          } finally {
+            if (sendBtn instanceof HTMLButtonElement) sendBtn.disabled = false;
+            if (inputEl instanceof HTMLTextAreaElement) {
+              inputEl.disabled = false;
+              inputEl.value = "";
+            }
+          }
+        }
+
+        // init
+        if (sendBtn && inputEl) {
+          sendBtn.addEventListener("click", () => {
+            if (!(inputEl instanceof HTMLTextAreaElement)) return;
+            const v = inputEl.value.trim();
+            if (!v) return;
+            sendMessage(v);
+          });
+
+          inputEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              // Ctrl+Enter to send
+              e.preventDefault();
+              if (!(inputEl instanceof HTMLTextAreaElement)) return;
+              const v = inputEl.value.trim();
+              if (!v) return;
+              sendMessage(v);
+            }
+          });
+        }
+
+        // --- helper: escape HTML to avoid XSS in text segments ---
+        function escapeHtml(str: string) {
+          return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        // --- basic (safe) markdown renderer ---
+        function renderMarkdown(md: string | null | undefined) {
+          if (md == null) return "";
+          // Split by fenced code blocks ```
+          const parts = String(md).split(/```/g);
+          let html = "";
+          for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 1) {
+              // code block — escape and wrap in <pre><code>
+              html += "<pre><code>" + escapeHtml(parts[i]) + "</code></pre>";
+            } else {
+              // text segment — escape, then apply inline markdown transforms
+              let t = escapeHtml(parts[i]);
+              // inline code `code`
+              t = t.replace(
+                /`([^`]+)`/g,
+                (m, p1) => "<code>" + escapeHtml(p1) + "</code>"
+              );
+              // bold **text**
+              t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+              // italics *text*
+              t = t.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+              // links [text](url)
+              t = t.replace(
+                /\[([^\]]+)\]\(([^)]+)\)/g,
+                (m, text, url) =>
+                  '<a href="' +
+                  escapeHtml(url) +
+                  '" target="_blank" rel="noopener noreferrer">' +
+                  text +
+                  "</a>"
+              );
+              // preserve paragraphs / newlines
+              const paragraphs = t
+                .split(/\n{2,}/)
+                .map((p) => p.replace(/\n/g, "<br>"));
+              html += paragraphs.map((p) => "<p>" + p + "</p>").join("");
+            }
+          }
+          return html;
+        }
+      </script>
+    </div>
+  </body>
 </html>
