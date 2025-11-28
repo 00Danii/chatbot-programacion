@@ -39,7 +39,7 @@ async function handleRequest({ request }: { request: any }) {
       );
     }
 
-    const token = "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";
+    const token = process.env.HF_TOKEN;
     if (!token) {
       return new Response(
         JSON.stringify({
