@@ -39,7 +39,7 @@ async function handleRequest({ request }: { request: any }) {
       );
     }
 
-    const token = "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";
+    const token = "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";
     if (!token) {
       return new Response(
         JSON.stringify({
